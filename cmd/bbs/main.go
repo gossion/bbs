@@ -49,6 +49,7 @@ import (
 	"github.com/tedsuo/ifrit/grouper"
 	"github.com/tedsuo/ifrit/http_server"
 	"github.com/tedsuo/ifrit/sigmon"
+	_ "github.com/denisenkom/go-mssqldb"
 )
 
 var accessLogPath = flag.String(
@@ -352,6 +353,8 @@ func main() {
 	}
 
 	// If SQL database info is passed in, use SQL instead of ETCD
+	// TODO: if not use connectionstring
+	//	 if use ssl
 	if *databaseDriver != "" && *databaseConnectionString != "" {
 		var err error
 		connectionString := appendSSLConnectionStringParam(logger, *databaseDriver, *databaseConnectionString, *sqlCACertFile)
