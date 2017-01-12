@@ -49,6 +49,7 @@ import (
 	"github.com/tedsuo/ifrit/grouper"
 	"github.com/tedsuo/ifrit/http_server"
 	"github.com/tedsuo/ifrit/sigmon"
+	_ "github.com/denisenkom/go-mssqldb"
 )
 
 var accessLogPath = flag.String(

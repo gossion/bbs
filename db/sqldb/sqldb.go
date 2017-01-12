@@ -122,6 +122,7 @@ func (db *SQLDB) convertSQLError(err error) *models.Error {
 			return db.convertMySQLError(err.(*mysql.MySQLError))
 		case *pq.Error:
 			return db.convertPostgresError(err.(*pq.Error))
+        //TODO: mssql error code
 		}
 	}
 
@@ -157,3 +158,20 @@ func (db *SQLDB) convertPostgresError(err *pq.Error) *models.Error {
 		return models.ErrUnknownError
 	}
 }
+
+func (db *SQLDB) getTrueValue() interface{} {
+	if db.flavor == MSSQL {
+		return 1
+	} else {
+		return true
+	}
+}
+
+func (db *SQLDB) getFalseValue() interface{} {
+	if db.flavor == MSSQL {
+		return 0
+	} else {
+		return false
+	}
+}
+

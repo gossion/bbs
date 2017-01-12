@@ -53,13 +53,18 @@ func (e *AddPlacementTagsToDesiredLRPs) SetClock(c clock.Clock)    { e.clock = c
 func (e *AddPlacementTagsToDesiredLRPs) SetDBFlavor(flavor string) { e.dbFlavor = flavor }
 
 func (e *AddPlacementTagsToDesiredLRPs) Up(logger lager.Logger) error {
-	logger.Info("altering the table", lager.Data{"query": alterDesiredLRPAddPlacementTagSQL})
-	_, err := e.rawSQLDB.Exec(alterDesiredLRPAddPlacementTagSQL)
+	query := alterDesiredLRPAddPlacementTagSQL
+	if e.dbFlavor == "mssql" {
+		query = `ALTER TABLE desired_lrps ADD placement_tags TEXT;`
+	}
+
+	logger.Info("altering the table", lager.Data{"query": query})
+	_, err := e.rawSQLDB.Exec(query)
 	if err != nil {
 		logger.Error("failed-altering-tables", err)
 		return err
 	}
-	logger.Info("altered the table", lager.Data{"query": alterDesiredLRPAddPlacementTagSQL})
+	logger.Info("altered the table", lager.Data{"query": query})
 
 	return nil
 }

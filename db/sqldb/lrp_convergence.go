@@ -367,7 +367,7 @@ func (db *SQLDB) pruneDomains(logger lager.Logger, now time.Time) {
 func (db *SQLDB) pruneEvacuatingActualLRPs(logger lager.Logger, now time.Time) {
 	logger = logger.Session("prune-evacuating-actual-lrps")
 
-	_, err := db.delete(logger, db.db, actualLRPsTable, "evacuating = ? AND expire_time <= ?", true, now.UnixNano())
+	_, err := db.delete(logger, db.db, actualLRPsTable, "evacuating = ? AND expire_time <= ?", db.getTrueValue(), now.UnixNano())
 	if err != nil {
 		logger.Error("failed-query", err)
 	}
