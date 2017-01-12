@@ -59,22 +59,35 @@ var _ = BeforeSuite(func() {
 		dbDriverName = "mysql"
 		dbBaseConnectionString = "diego:diego_password@/"
 		dbFlavor = sqldb.MySQL
+	} else if test_helpers.UseMSSQL() {
+		dbDriverName = "mssql"
+		dbBaseConnectionString = os.Getenv("MSSQL_BASE_CONNECTION_STRING")
+		dbFlavor = sqldb.MSSQL
 	} else {
 		panic("Unsupported driver")
 	}
 
 	// mysql must be set up on localhost as described in the CONTRIBUTING.md doc
 	// in diego-release.
+	// mssql should be set up on Azure
 	db, err = sql.Open(dbDriverName, dbBaseConnectionString)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(db.Ping()).NotTo(HaveOccurred())
 
-	_, err = db.Exec(fmt.Sprintf("CREATE DATABASE diego_%d", GinkgoParallelNode()))
-	Expect(err).NotTo(HaveOccurred())
+	if dbFlavor == sqldb.MSSQL {
+		_, err = db.Exec(fmt.Sprintf("CREATE DATABASE diego_%d", GinkgoParallelNode()))
+		time.Sleep(5*time.Second)
+		db, err = sql.Open(dbDriverName, fmt.Sprintf("%s;database=diego_%d", dbBaseConnectionString, GinkgoParallelNode()))
+		Expect(err).NotTo(HaveOccurred())
+		Expect(db.Ping()).NotTo(HaveOccurred())
+	} else {
+		_, err = db.Exec(fmt.Sprintf("CREATE DATABASE diego_%d", GinkgoParallelNode()))
+		Expect(err).NotTo(HaveOccurred())
 
-	db, err = sql.Open(dbDriverName, fmt.Sprintf("%sdiego_%d", dbBaseConnectionString, GinkgoParallelNode()))
-	Expect(err).NotTo(HaveOccurred())
-	Expect(db.Ping()).NotTo(HaveOccurred())
+		db, err = sql.Open(dbDriverName, fmt.Sprintf("%sdiego_%d", dbBaseConnectionString, GinkgoParallelNode()))
+		Expect(err).NotTo(HaveOccurred())
+		Expect(db.Ping()).NotTo(HaveOccurred())
+	}
 
 	encryptionKey, err := encryption.NewKey("label", "passphrase")
 	Expect(err).NotTo(HaveOccurred())
@@ -134,7 +147,10 @@ var _ = AfterSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(db.Ping()).NotTo(HaveOccurred())
 	_, err = db.Exec(fmt.Sprintf("DROP DATABASE diego_%d", GinkgoParallelNode()))
-	Expect(err).NotTo(HaveOccurred())
+	// On Azure, it will return a "i/o timeout" error when the database is dropped.
+	if dbFlavor != sqldb.MSSQL {
+		Expect(err).NotTo(HaveOccurred())
+	}
 	Expect(db.Close()).NotTo(HaveOccurred())
 })
 

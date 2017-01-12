@@ -102,6 +102,9 @@ var _ = Describe("Encrypt Routes in Desired LRPs", func() {
 		It("should encrypt route column in desired lrps", func() {
 			var fetchedJSONData string
 			query := sqldb.RebindForFlavor("select routes from desired_lrps limit 1", flavor)
+			if flavor == sqldb.MSSQL {
+				query = "select top 1 routes from desired_lrps"
+			}
 			row := rawSQLDB.QueryRow(query)
 			Expect(row.Scan(&fetchedJSONData)).NotTo(HaveOccurred())
 			Expect(fetchedJSONData).ToNot(BeEquivalentTo(routes))

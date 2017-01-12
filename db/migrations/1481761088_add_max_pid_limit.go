@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"code.cloudfoundry.org/bbs/db/etcd"
+	"code.cloudfoundry.org/bbs/db/sqldb"
 	"code.cloudfoundry.org/bbs/encryption"
 	"code.cloudfoundry.org/bbs/format"
 	"code.cloudfoundry.org/bbs/migration"
@@ -53,19 +54,26 @@ func (e *AddMaxPidsToDesiredLRPs) SetClock(c clock.Clock)    { e.clock = c }
 func (e *AddMaxPidsToDesiredLRPs) SetDBFlavor(flavor string) { e.dbFlavor = flavor }
 
 func (e *AddMaxPidsToDesiredLRPs) Up(logger lager.Logger) error {
-	logger.Info("altering the table", lager.Data{"query": alterDesiredLRPAddMaxPidsSQL})
-	_, err := e.rawSQLDB.Exec(alterDesiredLRPAddMaxPidsSQL)
+	query := alterDesiredLRPAddMaxPidsSQL
+	if e.dbFlavor == sqldb.MSSQL {
+		query = alterDesiredLRPAddMaxPidsTSQL
+	}
+	logger.Info("altering the table", lager.Data{"query": query})
+	_, err := e.rawSQLDB.Exec(query)
 	if err != nil {
 		logger.Error("failed-altering-tables", err)
 		return err
 	}
-	logger.Info("altered the table", lager.Data{"query": alterDesiredLRPAddMaxPidsSQL})
+	logger.Info("altered the table", lager.Data{"query": query})
 
 	return nil
 }
 
 const alterDesiredLRPAddMaxPidsSQL = `ALTER TABLE desired_lrps
 	ADD COLUMN max_pids INTEGER DEFAULT 0;`
+
+const alterDesiredLRPAddMaxPidsTSQL = `ALTER TABLE desired_lrps
+	ADD max_pids INTEGER DEFAULT 0;`
 
 func (e *AddMaxPidsToDesiredLRPs) Down(logger lager.Logger) error {
 	return errors.New("not implemented")

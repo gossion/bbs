@@ -188,6 +188,14 @@ func createTables(logger lager.Logger, db *sql.DB, flavor string) error {
 		sqldb.RebindForFlavor(createActualLRPsSQL, flavor),
 		sqldb.RebindForFlavor(createTasksSQL, flavor),
 	}
+	if flavor == sqldb.MSSQL {
+		createTablesSQL = []string{
+			sqldb.RebindForFlavor(createDomainSQL, flavor),
+			sqldb.RebindForFlavor(createDesiredLRPsTSQL, flavor),
+			sqldb.RebindForFlavor(createActualLRPsTSQL, flavor),
+			sqldb.RebindForFlavor(createTasksTSQL, flavor),
+		}
+	}
 
 	logger.Info("creating-tables")
 	for _, query := range createTablesSQL {
@@ -308,8 +316,8 @@ func (e *ETCDToSQL) migrateDesiredLRPs(logger lager.Logger) error {
 					modification_tag_index, run_info)
 				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 			`, e.dbFlavor), schedInfo.ProcessGuid, schedInfo.Domain, schedInfo.LogGuid, schedInfo.Annotation,
-				schedInfo.Instances, schedInfo.MemoryMb, schedInfo.DiskMb, schedInfo.RootFs, volumePlacementData,
-				routeData, schedInfo.ModificationTag.Epoch, schedInfo.ModificationTag.Index, []byte(node.Value))
+				schedInfo.Instances, schedInfo.MemoryMb, schedInfo.DiskMb, schedInfo.RootFs, string(volumePlacementData),
+				string(routeData), schedInfo.ModificationTag.Epoch, schedInfo.ModificationTag.Index, string(node.Value))
 			if err != nil {
 				logger.Error("failed-inserting-desired-lrp", err)
 				continue
@@ -354,7 +362,7 @@ func (e *ETCDToSQL) migrateActualLRPs(logger lager.Logger) error {
 								modification_tag_epoch, modification_tag_index)
 							VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 						`, e.dbFlavor), actualLRP.ProcessGuid, actualLRP.Index, actualLRP.Domain, actualLRP.InstanceGuid,
-							actualLRP.CellId, netInfoData, actualLRP.CrashCount, actualLRP.CrashReason,
+							actualLRP.CellId, string(netInfoData), actualLRP.CrashCount, actualLRP.CrashReason,
 							actualLRP.State, actualLRP.PlacementError, actualLRP.Since,
 							actualLRP.ModificationTag.Epoch, actualLRP.ModificationTag.Index)
 						if err != nil {
@@ -399,7 +407,7 @@ func (e *ETCDToSQL) migrateTasks(logger lager.Logger) error {
 						`, e.dbFlavor),
 				task.TaskGuid, task.Domain, task.UpdatedAt, task.CreatedAt,
 				task.FirstCompletedAt, task.State, task.CellId, task.Result,
-				task.Failed, task.FailureReason, definitionData)
+				task.Failed, task.FailureReason, string(definitionData))
 			if err != nil {
 				logger.Error("failed-inserting-task", err)
 				continue
@@ -431,6 +439,22 @@ const createDesiredLRPsSQL = `CREATE TABLE desired_lrps(
 	run_info MEDIUMTEXT NOT NULL
 );`
 
+const createDesiredLRPsTSQL = `CREATE TABLE desired_lrps(
+	process_guid VARCHAR(255) PRIMARY KEY,
+	domain VARCHAR(255) NOT NULL,
+	log_guid VARCHAR(255) NOT NULL,
+	annotation NVARCHAR(MAX),
+	instances INT NOT NULL,
+	memory_mb INT NOT NULL,
+	disk_mb INT NOT NULL,
+	rootfs VARCHAR(255) NOT NULL,
+	routes NVARCHAR(MAX) NOT NULL,
+	volume_placement NVARCHAR(MAX) NOT NULL,
+	modification_tag_epoch VARCHAR(255) NOT NULL,
+	modification_tag_index INT,
+	run_info NVARCHAR(MAX) NOT NULL
+);`
+
 const createActualLRPsSQL = `CREATE TABLE actual_lrps(
 	process_guid VARCHAR(255),
 	instance_index INT,
@@ -442,6 +466,26 @@ const createActualLRPsSQL = `CREATE TABLE actual_lrps(
 	placement_error VARCHAR(255) NOT NULL DEFAULT '',
 	since BIGINT DEFAULT 0,
 	net_info MEDIUMTEXT NOT NULL,
+	modification_tag_epoch VARCHAR(255) NOT NULL,
+	modification_tag_index INT,
+	crash_count INT NOT NULL DEFAULT 0,
+	crash_reason VARCHAR(255) NOT NULL DEFAULT '',
+	expire_time BIGINT DEFAULT 0,
+
+	PRIMARY KEY(process_guid, instance_index, evacuating)
+);`
+
+const createActualLRPsTSQL = `CREATE TABLE actual_lrps(
+	process_guid VARCHAR(255),
+	instance_index INT,
+	evacuating BIT DEFAULT 0,
+	domain VARCHAR(255) NOT NULL,
+	state VARCHAR(255) NOT NULL,
+	instance_guid VARCHAR(255) NOT NULL DEFAULT '',
+	cell_id VARCHAR(255) NOT NULL DEFAULT '',
+	placement_error VARCHAR(255) NOT NULL DEFAULT '',
+	since BIGINT DEFAULT 0,
+	net_info NVARCHAR(MAX) NOT NULL,
 	modification_tag_epoch VARCHAR(255) NOT NULL,
 	modification_tag_index INT,
 	crash_count INT NOT NULL DEFAULT 0,
@@ -463,6 +507,20 @@ const createTasksSQL = `CREATE TABLE tasks(
 	failed BOOL DEFAULT false,
 	failure_reason VARCHAR(255) NOT NULL DEFAULT '',
 	task_definition MEDIUMTEXT NOT NULL
+);`
+
+const createTasksTSQL = `CREATE TABLE tasks(
+	guid VARCHAR(255) PRIMARY KEY,
+	domain VARCHAR(255) NOT NULL,
+	updated_at BIGINT DEFAULT 0,
+	created_at BIGINT DEFAULT 0,
+	first_completed_at BIGINT DEFAULT 0,
+	state INT,
+	cell_id VARCHAR(255) NOT NULL DEFAULT '',
+	result NVARCHAR(MAX),
+	failed BIT DEFAULT 0,
+	failure_reason VARCHAR(255) NOT NULL DEFAULT '',
+	task_definition NVARCHAR(MAX) NOT NULL
 );`
 
 var createDomainsIndices = []string{

@@ -61,18 +61,18 @@ func (db *SQLDB) DesireLRP(logger lager.Logger, desiredLRP *models.DesiredLRP) e
 				"process_guid":           desiredLRP.ProcessGuid,
 				"domain":                 desiredLRP.Domain,
 				"log_guid":               desiredLRP.LogGuid,
-				"annotation":             desiredLRP.Annotation,
+				"annotation":             string(desiredLRP.Annotation),
 				"instances":              desiredLRP.Instances,
 				"memory_mb":              desiredLRP.MemoryMb,
 				"disk_mb":                desiredLRP.DiskMb,
 				"max_pids":               desiredLRP.MaxPids,
 				"rootfs":                 desiredLRP.RootFs,
-				"volume_placement":       volumePlacementData,
+				"volume_placement":       string(volumePlacementData),
 				"modification_tag_epoch": desiredLRP.ModificationTag.Epoch,
 				"modification_tag_index": desiredLRP.ModificationTag.Index,
-				"routes":                 routesData,
-				"run_info":               runInfoData,
-				"placement_tags":         placementTagData,
+				"routes":                 string(routesData),
+				"run_info":               string(runInfoData),
+				"placement_tags":         string(placementTagData),
 			},
 		)
 		if err != nil {
@@ -210,7 +210,7 @@ func (db *SQLDB) UpdateDesiredLRP(logger lager.Logger, processGuid string, updat
 		updateAttributes := SQLAttributes{"modification_tag_index": beforeDesiredLRP.ModificationTag.Index + 1}
 
 		if update.Annotation != nil {
-			updateAttributes["annotation"] = *update.Annotation
+			updateAttributes["annotation"] = string(*update.Annotation)
 		}
 
 		if update.Instances != nil {
@@ -222,7 +222,7 @@ func (db *SQLDB) UpdateDesiredLRP(logger lager.Logger, processGuid string, updat
 			if err != nil {
 				return err
 			}
-			updateAttributes["routes"] = encodedData
+			updateAttributes["routes"] = string(encodedData)
 		}
 
 		_, err = db.update(logger, tx, desiredLRPsTable, updateAttributes, `process_guid = ?`, processGuid)

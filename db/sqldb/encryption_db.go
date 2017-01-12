@@ -117,7 +117,7 @@ func (db *SQLDB) reEncrypt(logger lager.Logger, tableName, primaryKey string, en
 				}
 
 				columnName := blobColumns[columnIdx]
-				updatedColumnValues[columnName] = encryptedPayload
+				updatedColumnValues[columnName] = string(encryptedPayload)
 			}
 			_, err = db.update(logger, tx, tableName,
 				updatedColumnValues,

@@ -85,6 +85,9 @@ var _ = Describe("Add Maximum Process limit to Desired LRPs", func() {
 
 			var maxPids int
 			query := sqldb.RebindForFlavor("select max_pids from desired_lrps limit 1", flavor)
+			if flavor == sqldb.MSSQL {
+				query = "select top 1 max_pids from desired_lrps"
+			}
 			row := rawSQLDB.QueryRow(query)
 			Expect(row.Scan(&maxPids)).NotTo(HaveOccurred())
 			Expect(maxPids).To(Equal(1))
@@ -105,6 +108,9 @@ var _ = Describe("Add Maximum Process limit to Desired LRPs", func() {
 
 			var maxPids int
 			query := sqldb.RebindForFlavor("select max_pids from desired_lrps limit 1", flavor)
+			if flavor == sqldb.MSSQL {
+				query = "select top 1 max_pids from desired_lrps"
+			}
 			row := rawSQLDB.QueryRow(query)
 			Expect(row.Scan(&maxPids)).NotTo(HaveOccurred())
 			Expect(maxPids).To(Equal(0))
