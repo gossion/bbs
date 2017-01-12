@@ -27,7 +27,7 @@ func (db *SQLDB) EvacuateActualLRP(
 		processGuid := lrpKey.ProcessGuid
 		index := lrpKey.Index
 
-		actualLRP, err = db.fetchActualLRPForUpdate(logger, processGuid, index, true, tx)
+		actualLRP, err = db.fetchActualLRPForUpdate(logger, processGuid, index, db.getTrueValue(), tx)
 		if err == models.ErrResourceNotFound {
 			logger.Debug("creating-evacuating-lrp")
 			actualLRP, err = db.createEvacuatingActualLRP(logger, lrpKey, instanceKey, netInfo, ttl, tx)
@@ -64,13 +64,13 @@ func (db *SQLDB) EvacuateActualLRP(
 				"domain":                 actualLRP.Domain,
 				"instance_guid":          actualLRP.InstanceGuid,
 				"cell_id":                actualLRP.CellId,
-				"net_info":               netInfoData,
+				"net_info":               string(netInfoData),
 				"state":                  actualLRP.State,
 				"since":                  actualLRP.Since,
 				"modification_tag_index": actualLRP.ModificationTag.Index,
 			},
 			"process_guid = ? AND instance_index = ? AND evacuating = ?",
-			actualLRP.ProcessGuid, actualLRP.Index, true,
+			actualLRP.ProcessGuid, actualLRP.Index, db.getTrueValue(),
 		)
 		if err != nil {
 			logger.Error("failed-update-evacuating-lrp", err)
@@ -92,7 +92,7 @@ func (db *SQLDB) RemoveEvacuatingActualLRP(logger lager.Logger, lrpKey *models.A
 		processGuid := lrpKey.ProcessGuid
 		index := lrpKey.Index
 
-		lrp, err := db.fetchActualLRPForUpdate(logger, processGuid, index, true, tx)
+		lrp, err := db.fetchActualLRPForUpdate(logger, processGuid, index, db.getTrueValue(), tx)
 		if err == models.ErrResourceNotFound {
 			logger.Debug("evacuating-lrp-does-not-exist")
 			return nil
@@ -110,7 +110,7 @@ func (db *SQLDB) RemoveEvacuatingActualLRP(logger lager.Logger, lrpKey *models.A
 
 		_, err = db.delete(logger, tx, "actual_lrps",
 			"process_guid = ? AND instance_index = ? AND evacuating = ?",
-			processGuid, index, true,
+			processGuid, index, db.getTrueValue(),
 		)
 		if err != nil {
 			logger.Error("failed-delete", err)
@@ -161,7 +161,7 @@ func (db *SQLDB) createEvacuatingActualLRP(logger lager.Logger,
 			"instance_guid":          actualLRP.InstanceGuid,
 			"cell_id":                actualLRP.CellId,
 			"state":                  actualLRP.State,
-			"net_info":               netInfoData,
+			"net_info":               string(netInfoData),
 			"since":                  actualLRP.Since,
 			"modification_tag_epoch": actualLRP.ModificationTag.Epoch,
 			"modification_tag_index": actualLRP.ModificationTag.Index,

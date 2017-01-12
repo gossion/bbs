@@ -188,6 +188,14 @@ func createTables(logger lager.Logger, db *sql.DB, flavor string) error {
 		sqldb.RebindForFlavor(createActualLRPsSQL, flavor),
 		sqldb.RebindForFlavor(createTasksSQL, flavor),
 	}
+	if flavor == "mssql" {
+		createTablesSQL = []string{
+			sqldb.RebindForFlavor(createDomainSQL, flavor),
+			sqldb.RebindForFlavor(createDesiredLRPsTSQL, flavor),
+			sqldb.RebindForFlavor(createActualLRPsTSQL, flavor),
+			sqldb.RebindForFlavor(createTasksTSQL, flavor),
+		}
+	}
 
 	logger.Info("creating-tables")
 	for _, query := range createTablesSQL {
@@ -431,6 +439,22 @@ const createDesiredLRPsSQL = `CREATE TABLE desired_lrps(
 	run_info MEDIUMTEXT NOT NULL
 );`
 
+const createDesiredLRPsTSQL = `CREATE TABLE desired_lrps(
+	process_guid VARCHAR(255) PRIMARY KEY,
+	domain VARCHAR(255) NOT NULL,
+	log_guid VARCHAR(255) NOT NULL,
+	annotation TEXT,
+	instances INT NOT NULL,
+	memory_mb INT NOT NULL,
+	disk_mb INT NOT NULL,
+	rootfs VARCHAR(255) NOT NULL,
+	routes TEXT NOT NULL,
+	volume_placement TEXT NOT NULL,
+	modification_tag_epoch VARCHAR(255) NOT NULL,
+	modification_tag_index INT,
+	run_info TEXT NOT NULL
+);`
+
 const createActualLRPsSQL = `CREATE TABLE actual_lrps(
 	process_guid VARCHAR(255),
 	instance_index INT,
@@ -442,6 +466,26 @@ const createActualLRPsSQL = `CREATE TABLE actual_lrps(
 	placement_error VARCHAR(255) NOT NULL DEFAULT '',
 	since BIGINT DEFAULT 0,
 	net_info MEDIUMTEXT NOT NULL,
+	modification_tag_epoch VARCHAR(255) NOT NULL,
+	modification_tag_index INT,
+	crash_count INT NOT NULL DEFAULT 0,
+	crash_reason VARCHAR(255) NOT NULL DEFAULT '',
+	expire_time BIGINT DEFAULT 0,
+
+	PRIMARY KEY(process_guid, instance_index, evacuating)
+);`
+
+const createActualLRPsTSQL = `CREATE TABLE actual_lrps(
+	process_guid VARCHAR(255),
+	instance_index INT,
+	evacuating BIT DEFAULT 0,
+	domain VARCHAR(255) NOT NULL,
+	state VARCHAR(255) NOT NULL,
+	instance_guid VARCHAR(255) NOT NULL DEFAULT '',
+	cell_id VARCHAR(255) NOT NULL DEFAULT '',
+	placement_error VARCHAR(255) NOT NULL DEFAULT '',
+	since BIGINT DEFAULT 0,
+	net_info TEXT NOT NULL,
 	modification_tag_epoch VARCHAR(255) NOT NULL,
 	modification_tag_index INT,
 	crash_count INT NOT NULL DEFAULT 0,
@@ -463,6 +507,20 @@ const createTasksSQL = `CREATE TABLE tasks(
 	failed BOOL DEFAULT false,
 	failure_reason VARCHAR(255) NOT NULL DEFAULT '',
 	task_definition MEDIUMTEXT NOT NULL
+);`
+
+const createTasksTSQL = `CREATE TABLE tasks(
+	guid VARCHAR(255) PRIMARY KEY,
+	domain VARCHAR(255) NOT NULL,
+	updated_at BIGINT DEFAULT 0,
+	created_at BIGINT DEFAULT 0,
+	first_completed_at BIGINT DEFAULT 0,
+	state INT,
+	cell_id VARCHAR(255) NOT NULL DEFAULT '',
+	result TEXT,
+	failed BIT DEFAULT 0,
+	failure_reason VARCHAR(255) NOT NULL DEFAULT '',
+	task_definition TEXT NOT NULL
 );`
 
 var createDomainsIndices = []string{

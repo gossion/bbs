@@ -13,6 +13,7 @@ import (
 const (
 	MySQL    = "mysql"
 	Postgres = "postgres"
+	MSSQL    = "mssql"
 )
 
 const (
@@ -99,14 +100,28 @@ var (
 )
 
 func (db *SQLDB) CreateConfigurationsTable(logger lager.Logger) error {
-	_, err := db.db.Exec(`
-		CREATE TABLE IF NOT EXISTS configurations(
+	switch db.flavor {
+	case MSSQL:
+		_, err := db.db.Exec(`
+			IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='configurations' AND xtype='U')
+			CREATE TABLE configurations(
 			id VARCHAR(255) PRIMARY KEY,
 			value VARCHAR(255)
-		)
-	`)
-	if err != nil {
-		return err
+			)
+		`)
+		if err != nil {
+			return err
+		}
+	default:
+		_, err := db.db.Exec(`
+			CREATE TABLE IF NOT EXISTS configurations(
+			id VARCHAR(255) PRIMARY KEY,
+			value VARCHAR(255)
+			)
+		`)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -122,6 +137,10 @@ func (db *SQLDB) SetIsolationLevel(logger lager.Logger, level string) error {
 		query = fmt.Sprintf("SET SESSION TRANSACTION ISOLATION LEVEL %s", level)
 	} else if db.flavor == Postgres {
 		query = fmt.Sprintf("SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL %s", level)
+	} else if db.flavor == MSSQL {
+		query = fmt.Sprintf("SET TRANSACTION ISOLATION LEVEL %s", level)
+	} else {
+		panic("database flavor not implemented: " + db.flavor)
 	}
 
 	_, err := db.db.Exec(query)
@@ -141,44 +160,79 @@ func (db *SQLDB) SetIsolationLevel(logger lager.Logger, level string) error {
 //	 annotation TEXT
 // )`
 func RebindForFlavor(query, flavor string) string {
-	if flavor == MySQL {
+	switch flavor {
+	case MySQL:
 		return query
+	case Postgres:
+		strParts := strings.Split(query, "?")
+		for i := 1; i < len(strParts); i++ {
+			strParts[i-1] = fmt.Sprintf("%s$%d", strParts[i-1], i)
+		}
+		return strings.Replace(strings.Join(strParts, ""), "MEDIUMTEXT", "TEXT", -1)
+	case MSSQL:
+		return strings.Replace(query, "MEDIUMTEXT", "TEXT", -1)
+	default:
+		panic("database flavor not implemented: " + flavor)
 	}
-	if flavor != Postgres {
-		panic(fmt.Sprintf("Unrecognized DB flavor '%s'", flavor))
-	}
-
-	strParts := strings.Split(query, "?")
-	for i := 1; i < len(strParts); i++ {
-		strParts[i-1] = fmt.Sprintf("%s$%d", strParts[i-1], i)
-	}
-	return strings.Replace(strings.Join(strParts, ""), "MEDIUMTEXT", "TEXT", -1)
 }
 
 func (db *SQLDB) selectLRPInstanceCounts(logger lager.Logger, q Queryable) (*sql.Rows, error) {
 	var query string
 	columns := schedulingInfoColumns
-	columns = append(columns, "COUNT(actual_lrps.instance_index) AS actual_instances")
 
 	switch db.flavor {
 	case Postgres:
+		columns = append(columns, "COUNT(actual_lrps.instance_index) AS actual_instances")
 		columns = append(columns, "STRING_AGG(actual_lrps.instance_index::text, ',') AS existing_indices")
+		query = fmt.Sprintf(`
+			SELECT %s
+				FROM desired_lrps
+				LEFT OUTER JOIN actual_lrps ON desired_lrps.process_guid = actual_lrps.process_guid AND actual_lrps.evacuating = false
+				GROUP BY desired_lrps.process_guid
+				HAVING COUNT(actual_lrps.instance_index) <> desired_lrps.instances
+			`,
+			strings.Join(columns, ", "),
+		)
+
 	case MySQL:
+		columns = append(columns, "COUNT(actual_lrps.instance_index) AS actual_instances")
 		columns = append(columns, "GROUP_CONCAT(actual_lrps.instance_index) AS existing_indices")
+		query = fmt.Sprintf(`
+			SELECT %s
+				FROM desired_lrps
+				LEFT OUTER JOIN actual_lrps ON desired_lrps.process_guid = actual_lrps.process_guid AND actual_lrps.evacuating = false
+				GROUP BY desired_lrps.process_guid
+				HAVING COUNT(actual_lrps.instance_index) <> desired_lrps.instances
+			`,
+			strings.Join(columns, ", "),
+		)
+	case MSSQL:
+		query = fmt.Sprintf(`
+			SELECT %s,
+				T1.actual_instances,
+				T1.existing_indices
+			FROM
+				(SELECT desired_lrps.process_guid,
+					desired_lrps.instances,
+					COUNT(actual_lrps.instance_index) AS actual_instances,
+					STUFF ((SELECT ',' + STR(al.instance_index)
+							FROM actual_lrps al
+							WHERE al.process_guid = desired_lrps.process_guid
+							FOR XML PATH('')
+							), 1, 1, '') AS existing_indices
+				FROM desired_lrps
+				LEFT OUTER JOIN actual_lrps ON desired_lrps.process_guid = actual_lrps.process_guid AND actual_lrps.evacuating = 0
+				GROUP BY desired_lrps.process_guid, desired_lrps.instances
+				HAVING COUNT(actual_lrps.instance_index) <> desired_lrps.instances
+				) T1
+			LEFT JOIN desired_lrps T2 ON T2.process_guid = T1.process_guid AND T2.instances = T1.instances
+			`,
+			strings.Replace(strings.Join(columns, ", "), desiredLRPsTable, "T2", -1),
+		)
 	default:
 		// totally shouldn't happen
 		panic("database flavor not implemented: " + db.flavor)
 	}
-
-	query = fmt.Sprintf(`
-		SELECT %s
-			FROM desired_lrps
-			LEFT OUTER JOIN actual_lrps ON desired_lrps.process_guid = actual_lrps.process_guid AND actual_lrps.evacuating = false
-			GROUP BY desired_lrps.process_guid
-			HAVING COUNT(actual_lrps.instance_index) <> desired_lrps.instances
-		`,
-		strings.Join(columns, ", "),
-	)
 
 	return q.Query(query)
 }
@@ -188,14 +242,14 @@ func (db *SQLDB) selectOrphanedActualLRPs(logger lager.Logger, q Queryable) (*sq
       FROM actual_lrps
       JOIN domains ON actual_lrps.domain = domains.domain
       LEFT JOIN desired_lrps ON actual_lrps.process_guid = desired_lrps.process_guid
-      WHERE actual_lrps.evacuating = false AND desired_lrps.process_guid IS NULL
+      WHERE actual_lrps.evacuating = ? AND desired_lrps.process_guid IS NULL
 		`
 
-	return q.Query(query)
+	return q.Query(db.rebind(query), db.getFalseValue())
 }
 
 func (db *SQLDB) selectLRPsWithMissingCells(logger lager.Logger, q Queryable, cellSet models.CellSet) (*sql.Rows, error) {
-	wheres := []string{"actual_lrps.evacuating = false"}
+	wheres := []string{fmt.Sprintf(`actual_lrps.evacuating = %v`, db.getFalseValue())}
 	bindings := make([]interface{}, 0, len(cellSet))
 
 	if len(cellSet) > 0 {
@@ -232,7 +286,7 @@ func (db *SQLDB) selectCrashedLRPs(logger lager.Logger, q Queryable) (*sql.Rows,
 		),
 	)
 
-	return q.Query(db.rebind(query), models.ActualLRPStateCrashed, false)
+	return q.Query(db.rebind(query), models.ActualLRPStateCrashed, db.getFalseValue())
 }
 
 func (db *SQLDB) selectStaleUnclaimedLRPs(logger lager.Logger, q Queryable, now time.Time) (*sql.Rows, error) {
@@ -248,7 +302,7 @@ func (db *SQLDB) selectStaleUnclaimedLRPs(logger lager.Logger, q Queryable, now 
 	return q.Query(db.rebind(query),
 		models.ActualLRPStateUnclaimed,
 		now.Add(-models.StaleUnclaimedActualLRPDuration).UnixNano(),
-		false,
+		db.getFalseValue(),
 	)
 }
 
@@ -292,12 +346,23 @@ func (db *SQLDB) countActualLRPsByState(logger lager.Logger, q Queryable) (claim
 			FROM actual_lrps
 			WHERE evacuating = ?
 		`
+	case MSSQL:
+		query = `
+			SELECT
+				COUNT(CASE WHEN actual_lrps.state = ? THEN 1 ELSE NULL END) AS claimed_instances,
+				COUNT(CASE WHEN actual_lrps.state = ? THEN 1 ELSE NULL END) AS unclaimed_instances,
+				COUNT(CASE WHEN actual_lrps.state = ? THEN 1 ELSE NULL END) AS running_instances,
+				COUNT(CASE WHEN actual_lrps.state = ? THEN 1 ELSE NULL END) AS crashed_instances,
+				COUNT(DISTINCT CASE WHEN state = ? THEN process_guid ELSE NULL END) AS crashing_desireds
+			FROM actual_lrps
+			WHERE evacuating = ?
+		`
 	default:
 		// totally shouldn't happen
 		panic("database flavor not implemented: " + db.flavor)
 	}
 
-	row := db.db.QueryRow(query, models.ActualLRPStateClaimed, models.ActualLRPStateUnclaimed, models.ActualLRPStateRunning, models.ActualLRPStateCrashed, models.ActualLRPStateCrashed, false)
+	row := db.db.QueryRow(query, models.ActualLRPStateClaimed, models.ActualLRPStateUnclaimed, models.ActualLRPStateRunning, models.ActualLRPStateCrashed, models.ActualLRPStateCrashed, db.getFalseValue())
 	err := row.Scan(&claimedCount, &unclaimedCount, &runningCount, &crashedCount, &crashingDesiredCount)
 	if err != nil {
 		logger.Error("failed-counting-actual-lrps", err)
@@ -326,6 +391,15 @@ func (db *SQLDB) countTasksByState(logger lager.Logger, q Queryable) (pendingCou
 				COUNT(IF(state = ?, 1, NULL)) AS resolving_tasks
 			FROM tasks
 		`
+	case MSSQL:
+		query = `
+			SELECT
+				COUNT(CASE WHEN state = ? THEN 1 ELSE NULL END) AS pending_tasks,
+				COUNT(CASE WHEN state = ? THEN 1 ELSE NULL END) AS running_tasks,
+				COUNT(CASE WHEN state = ? THEN 1 ELSE NULL END) AS completed_tasks,
+				COUNT(CASE WHEN state = ? THEN 1 ELSE NULL END) AS resolving_tasks
+			FROM tasks
+		`
 	default:
 		// totally shouldn't happen
 		panic("database flavor not implemented: " + db.flavor)
@@ -344,16 +418,30 @@ func (db *SQLDB) one(logger lager.Logger, q Queryable, table string,
 	columns ColumnList, lockRow RowLock,
 	wheres string, whereBindings ...interface{},
 ) *sql.Row {
-	query := fmt.Sprintf("SELECT %s FROM %s\n", strings.Join(columns, ", "), table)
+	var query string
 
-	if len(wheres) > 0 {
-		query += "WHERE " + wheres
-	}
+	if db.flavor == MSSQL {
+		lockClause := ""
+		if lockRow {
+			lockClause = " WITH (UPDLOCK)"
+		}
+		query = fmt.Sprintf("SELECT TOP 1 %s FROM %s%s\n", strings.Join(columns, ", "), table, lockClause)
 
-	query += "\nLIMIT 1"
+		if len(wheres) > 0 {
+			query += "WHERE " + wheres
+		}
+	} else {
+		query = fmt.Sprintf("SELECT %s FROM %s\n", strings.Join(columns, ", "), table)
 
-	if lockRow {
-		query += "\nFOR UPDATE"
+		if len(wheres) > 0 {
+			query += "WHERE " + wheres
+		}
+
+		query += "\nLIMIT 1"
+
+		if lockRow {
+			query += "\nFOR UPDATE"
+		}
 	}
 
 	return q.QueryRow(db.rebind(query), whereBindings...)
@@ -364,14 +452,31 @@ func (db *SQLDB) all(logger lager.Logger, q Queryable, table string,
 	columns ColumnList, lockRow RowLock,
 	wheres string, whereBindings ...interface{},
 ) (*sql.Rows, error) {
-	query := fmt.Sprintf("SELECT %s FROM %s\n", strings.Join(columns, ", "), table)
+	var query string
 
-	if len(wheres) > 0 {
-		query += "WHERE " + wheres
-	}
+	if db.flavor == MSSQL {
+		lockClause := ""
 
-	if lockRow {
-		query += "\nFOR UPDATE"
+		if lockRow {
+			lockClause = " WITH (UPDLOCK)"
+		}
+
+		query = fmt.Sprintf("SELECT %s FROM %s%s\n", strings.Join(columns, ", "), table, lockClause)
+
+		if len(wheres) > 0 {
+			 query += "WHERE " + wheres
+		}
+	} else {
+
+		query = fmt.Sprintf("SELECT %s FROM %s\n", strings.Join(columns, ", "), table)
+
+		if len(wheres) > 0 {
+			query += "WHERE " + wheres
+		}
+
+		if lockRow {
+			query += "\nFOR UPDATE"
+		}
 	}
 
 	return q.Query(db.rebind(query), whereBindings...)
@@ -463,6 +568,43 @@ func (db *SQLDB) upsert(logger lager.Logger, q Queryable, table string, keyAttri
 			insertBindings,
 			strings.Join(updateBindings, ", "),
 		)
+	case MSSQL:
+		bindingValues = append(bindingValues, nonKeyBindingValues...)
+		bindingValues = append(bindingValues, keyBindingValues...)
+		bindingValues = append(bindingValues, keyBindingValues...)
+		bindingValues = append(bindingValues, nonKeyBindingValues...)
+
+		insert := fmt.Sprintf(`
+				INSERT INTO %s
+					(%s)
+				VALUES(%s)`,
+			table,
+			strings.Join(columns, ", "),
+			insertBindings)
+
+		whereClause := []string{}
+		for _, key := range keyNames {
+			whereClause = append(whereClause, fmt.Sprintf("%s = ?", key))
+		}
+
+		upsert := fmt.Sprintf(`
+				UPDATE %s SET
+					%s
+				WHERE %s
+				`,
+			table,
+			strings.Join(updateBindings, ", "),
+			strings.Join(whereClause, " AND "),
+		)
+
+		query = fmt.Sprintf(`
+				%s
+				if @@ROWCOUNT = 0
+				  %s
+				`,
+			upsert,
+			insert)
+
 	default:
 		// totally shouldn't happen
 		panic("database flavor not implemented: " + db.flavor)
