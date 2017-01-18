@@ -353,8 +353,6 @@ func main() {
 	}
 
 	// If SQL database info is passed in, use SQL instead of ETCD
-	// TODO: if not use connectionstring
-	//	 if use ssl
 	if *databaseDriver != "" && *databaseConnectionString != "" {
 		var err error
 		connectionString := appendSSLConnectionStringParam(logger, *databaseDriver, *databaseConnectionString, *sqlCACertFile)
