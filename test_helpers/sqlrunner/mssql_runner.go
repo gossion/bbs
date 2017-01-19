@@ -79,14 +79,14 @@ func (m *MsSQLRunner) Reset() {
 	}
 	for _, query := range truncateTablesSQL {
 		result, err := m.db.Exec(query)
-		switch err := err.(type) {
+		//switch err := err.(type) {
 		//TODO
-		case *mysql.MySQLError:
-			if err.Number == 1146 {
+		//case *mysql.MySQLError:
+		//	if err.Number == 1146 {
 				// missing table error, it's fine because we're trying to truncate it
-				continue
-			}
-		}
+		//		continue
+		//	}
+		//}
 
 		Expect(err).NotTo(HaveOccurred())
 		Expect(result.RowsAffected()).To(BeEquivalentTo(0))
