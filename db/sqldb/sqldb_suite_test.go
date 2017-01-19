@@ -59,6 +59,10 @@ var _ = BeforeSuite(func() {
 		dbDriverName = "mysql"
 		dbBaseConnectionString = "diego:diego_password@/"
 		dbFlavor = sqldb.MySQL
+	} else if test_helpers.UseMsSQL() {
+		dbDriverName = "mssql"
+		dbBaseConnectionString = os.Getenv("MSSQL_CONNECTION_STRING")
+		dbFlavor = sqldb.MSSQL
 	} else {
 		panic("Unsupported driver")
 	}
