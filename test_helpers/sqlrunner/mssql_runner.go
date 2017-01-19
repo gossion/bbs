@@ -30,20 +30,22 @@ func (m *MsSQLRunner) Run(signals <-chan os.Signal, ready chan<- struct{}) error
 	defer GinkgoRecover()
 
 	db_connection_string := os.Getenv("MSSQL_CONNECTION_STRING")
-	Expect(db_connection_string).NotTo(BeEmpty())
+	if db_connection_string == "" {
+		panic(fmt.Sprintf("You must specify MSSQL_CONNECTION_STRING when running test for mssql"))
+	}
 
 	var err error
 	m.db, err = sql.Open("mssql", db_connection_string)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(m.db.Ping()).NotTo(HaveOccurred())
 
-	m.db.Exec(fmt.Sprintf("DROP DATABASE %s", m.sqlDBName))
-	_, err = m.db.Exec(fmt.Sprintf("CREATE DATABASE %s", m.sqlDBName))
-	Expect(err).NotTo(HaveOccurred())
+	//m.db.Exec(fmt.Sprintf("DROP DATABASE %s", m.sqlDBName))
+	//_, err = m.db.Exec(fmt.Sprintf("CREATE DATABASE %s", m.sqlDBName))
+	//Expect(err).NotTo(HaveOccurred())
 
-	m.db, err = sql.Open("mysql", fmt.Sprintf("diego:diego_password@/%s", m.sqlDBName))
-	Expect(err).NotTo(HaveOccurred())
-	Expect(m.db.Ping()).NotTo(HaveOccurred())
+	//m.db, err = sql.Open("mssql", fmt.Sprintf("diego:diego_password@/%s", m.sqlDBName))
+	//Expect(err).NotTo(HaveOccurred())
+	//Expect(m.db.Ping()).NotTo(HaveOccurred())
 
 	close(ready)
 
