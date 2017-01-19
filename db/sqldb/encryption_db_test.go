@@ -168,7 +168,7 @@ var _ = Describe("Encryption", func() {
 			if test_helpers.UsePostgres() {
 				queryStr = test_helpers.ReplaceQuestionMarks(queryStr)
 			}
-			_, err = db.Exec(queryStr, processGuid, "fake-domain", "some-log-guid", 1, encodedRunInfo, 10, 10,
+			_, err = db.Exec(queryStr, processGuid, "fake-domain", "some-log-guid", 1, string(encodedRunInfo), 10, 10,
 				"some-root-fs", encodedRoutes, encodedVolumePlacement, 10)
 			Expect(err).NotTo(HaveOccurred())
 			cryptor = makeCryptor("new", "old")

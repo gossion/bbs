@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 	"time"
+	"fmt"
 
 	"code.cloudfoundry.org/bbs/format"
 	"code.cloudfoundry.org/bbs/models"
@@ -103,7 +104,7 @@ var _ = Describe("ActualLRPDB", func() {
 				if test_helpers.UsePostgres() {
 					queryStr = test_helpers.ReplaceQuestionMarks(queryStr)
 				}
-				_, err := db.Exec(queryStr, true, actualLRP.ProcessGuid, actualLRP.Index, false)
+				_, err := db.Exec(queryStr, db.getTrueValue(), actualLRP.ProcessGuid, actualLRP.Index, db.getFalseValue())
 				Expect(err).NotTo(HaveOccurred())
 			})
 
@@ -120,7 +121,7 @@ var _ = Describe("ActualLRPDB", func() {
 
 		Context("when there are both instance and evacuating LRPs", func() {
 			BeforeEach(func() {
-				queryStr := "UPDATE actual_lrps SET evacuating = true WHERE process_guid = ?"
+				queryStr := fmt.Sprintf("UPDATE actual_lrps SET evacuating = %v WHERE process_guid = ?", db.getTrueValue())
 				if test_helpers.UsePostgres() {
 					queryStr = test_helpers.ReplaceQuestionMarks(queryStr)
 				}
@@ -279,7 +280,7 @@ var _ = Describe("ActualLRPDB", func() {
 			if test_helpers.UsePostgres() {
 				queryStr = test_helpers.ReplaceQuestionMarks(queryStr)
 			}
-			_, err = db.Exec(queryStr, true, actualLRPKey5.ProcessGuid, actualLRPKey5.Index, false)
+			_, err = db.Exec(queryStr, db.getTrueValue(), actualLRPKey5.ProcessGuid, actualLRPKey5.Index, db.getFalseValue())
 			Expect(err).NotTo(HaveOccurred())
 			allActualLRPGroups = append(allActualLRPGroups, &models.ActualLRPGroup{
 				Evacuating: &models.ActualLRP{
@@ -312,7 +313,7 @@ var _ = Describe("ActualLRPDB", func() {
 			if test_helpers.UsePostgres() {
 				queryStr = test_helpers.ReplaceQuestionMarks(queryStr)
 			}
-			_, err = db.Exec(queryStr, true, actualLRPKey6.ProcessGuid, actualLRPKey6.Index, false)
+			_, err = db.Exec(queryStr, db.getTrueValue(), actualLRPKey6.ProcessGuid, actualLRPKey6.Index, db.getFalseValue())
 
 			_, err = sqlDB.CreateUnclaimedActualLRP(logger, actualLRPKey6)
 			Expect(err).NotTo(HaveOccurred())
@@ -451,7 +452,7 @@ var _ = Describe("ActualLRPDB", func() {
 			if test_helpers.UsePostgres() {
 				queryStr = test_helpers.ReplaceQuestionMarks(queryStr)
 			}
-			_, err = db.Exec(queryStr, true, actualLRPKey2.ProcessGuid, actualLRPKey2.Index, false)
+			_, err = db.Exec(queryStr, db.getTrueValue(), actualLRPKey2.ProcessGuid, actualLRPKey2.Index, db.getFalseValue())
 
 			_, err = sqlDB.CreateUnclaimedActualLRP(logger, actualLRPKey2)
 			Expect(err).NotTo(HaveOccurred())
