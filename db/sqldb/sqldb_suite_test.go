@@ -69,16 +69,19 @@ var _ = BeforeSuite(func() {
 
 	// mysql must be set up on localhost as described in the CONTRIBUTING.md doc
 	// in diego-release.
+	// mssql should be set up on Azure, and will not create a new database for test.
 	db, err = sql.Open(dbDriverName, dbBaseConnectionString)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(db.Ping()).NotTo(HaveOccurred())
 
-	_, err = db.Exec(fmt.Sprintf("CREATE DATABASE diego_%d", GinkgoParallelNode()))
-	Expect(err).NotTo(HaveOccurred())
+	if dbFlavor == sqldb.MySQL || dbFlavor == sqldb.Postgres {
+		_, err = db.Exec(fmt.Sprintf("CREATE DATABASE diego_%d", GinkgoParallelNode()))
+		Expect(err).NotTo(HaveOccurred())
 
-	db, err = sql.Open(dbDriverName, fmt.Sprintf("%sdiego_%d", dbBaseConnectionString, GinkgoParallelNode()))
-	Expect(err).NotTo(HaveOccurred())
-	Expect(db.Ping()).NotTo(HaveOccurred())
+		db, err = sql.Open(dbDriverName, fmt.Sprintf("%sdiego_%d", dbBaseConnectionString, GinkgoParallelNode()))
+		Expect(err).NotTo(HaveOccurred())
+		Expect(db.Ping()).NotTo(HaveOccurred())
+	}
 
 	encryptionKey, err := encryption.NewKey("label", "passphrase")
 	Expect(err).NotTo(HaveOccurred())
