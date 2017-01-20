@@ -61,3 +61,19 @@ func ReplaceQuestionMarks(queryString string) string {
 	}
 	return strings.Join(strParts, "")
 }
+
+func getTrueValue() interface{} {
+	if UseMsSQL() {
+		return 1
+	} else {
+		return true
+	}
+}
+
+func getFalseValue() interface{} {
+	if UseMsSQL() {
+		return 0
+	} else {
+		return false
+	}
+}

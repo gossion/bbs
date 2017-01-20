@@ -104,7 +104,7 @@ var _ = Describe("ActualLRPDB", func() {
 				if test_helpers.UsePostgres() {
 					queryStr = test_helpers.ReplaceQuestionMarks(queryStr)
 				}
-				_, err := db.Exec(queryStr, db.getTrueValue(), actualLRP.ProcessGuid, actualLRP.Index, db.getFalseValue())
+				_, err := db.Exec(queryStr, test_helpers.getTrueValue(), actualLRP.ProcessGuid, actualLRP.Index, test_helpers.getFalseValue())
 				Expect(err).NotTo(HaveOccurred())
 			})
 
@@ -121,7 +121,7 @@ var _ = Describe("ActualLRPDB", func() {
 
 		Context("when there are both instance and evacuating LRPs", func() {
 			BeforeEach(func() {
-				queryStr := fmt.Sprintf("UPDATE actual_lrps SET evacuating = %v WHERE process_guid = ?", db.getTrueValue())
+				queryStr := fmt.Sprintf("UPDATE actual_lrps SET evacuating = %v WHERE process_guid = ?", test_helpers.getTrueValue())
 				if test_helpers.UsePostgres() {
 					queryStr = test_helpers.ReplaceQuestionMarks(queryStr)
 				}
@@ -280,7 +280,7 @@ var _ = Describe("ActualLRPDB", func() {
 			if test_helpers.UsePostgres() {
 				queryStr = test_helpers.ReplaceQuestionMarks(queryStr)
 			}
-			_, err = db.Exec(queryStr, db.getTrueValue(), actualLRPKey5.ProcessGuid, actualLRPKey5.Index, db.getFalseValue())
+			_, err = db.Exec(queryStr, test_helpers.getTrueValue(), actualLRPKey5.ProcessGuid, actualLRPKey5.Index, test_helpers.getFalseValue())
 			Expect(err).NotTo(HaveOccurred())
 			allActualLRPGroups = append(allActualLRPGroups, &models.ActualLRPGroup{
 				Evacuating: &models.ActualLRP{
@@ -313,7 +313,7 @@ var _ = Describe("ActualLRPDB", func() {
 			if test_helpers.UsePostgres() {
 				queryStr = test_helpers.ReplaceQuestionMarks(queryStr)
 			}
-			_, err = db.Exec(queryStr, db.getTrueValue(), actualLRPKey6.ProcessGuid, actualLRPKey6.Index, db.getFalseValue())
+			_, err = db.Exec(queryStr, test_helpers.getTrueValue(), actualLRPKey6.ProcessGuid, actualLRPKey6.Index, test_helpers.getFalseValue())
 
 			_, err = sqlDB.CreateUnclaimedActualLRP(logger, actualLRPKey6)
 			Expect(err).NotTo(HaveOccurred())
@@ -452,7 +452,7 @@ var _ = Describe("ActualLRPDB", func() {
 			if test_helpers.UsePostgres() {
 				queryStr = test_helpers.ReplaceQuestionMarks(queryStr)
 			}
-			_, err = db.Exec(queryStr, db.getTrueValue(), actualLRPKey2.ProcessGuid, actualLRPKey2.Index, db.getFalseValue())
+			_, err = db.Exec(queryStr, test_helpers.getTrueValue(), actualLRPKey2.ProcessGuid, actualLRPKey2.Index, test_helpers.getFalseValue())
 
 			_, err = sqlDB.CreateUnclaimedActualLRP(logger, actualLRPKey2)
 			Expect(err).NotTo(HaveOccurred())
