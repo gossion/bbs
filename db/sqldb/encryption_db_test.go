@@ -157,7 +157,7 @@ var _ = Describe("Encryption", func() {
 			if test_helpers.UsePostgres() {
 				queryStr = test_helpers.ReplaceQuestionMarks(queryStr)
 			}
-			_, err = db.Exec(queryStr, taskGuid, "fake-domain", encodedTaskDef)
+			_, err = db.Exec(queryStr, taskGuid, "fake-domain", string(encodedTaskDef))
 			Expect(err).NotTo(HaveOccurred())
 
 			queryStr = `
@@ -169,7 +169,7 @@ var _ = Describe("Encryption", func() {
 				queryStr = test_helpers.ReplaceQuestionMarks(queryStr)
 			}
 			_, err = db.Exec(queryStr, processGuid, "fake-domain", "some-log-guid", 1, string(encodedRunInfo), 10, 10,
-				"some-root-fs", encodedRoutes, encodedVolumePlacement, 10)
+				"some-root-fs", string(encodedRoutes), string(encodedVolumePlacement), 10)
 			Expect(err).NotTo(HaveOccurred())
 			cryptor = makeCryptor("new", "old")
 
@@ -307,7 +307,7 @@ var _ = Describe("Encryption", func() {
 			if test_helpers.UsePostgres() {
 				queryStr = test_helpers.ReplaceQuestionMarks(queryStr)
 			}
-			_, err = db.Exec(queryStr, taskGuid, "fake-domain", encoded1)
+			_, err = db.Exec(queryStr, taskGuid, "fake-domain", string(encoded1))
 			Expect(err).NotTo(HaveOccurred())
 
 			cryptor = makeCryptor("new", "old")

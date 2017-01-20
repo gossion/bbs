@@ -689,7 +689,7 @@ var _ = Describe("ActualLRPDB", func() {
 					}
 					_, err = db.Exec(queryStr,
 						models.ActualLRPStateRunning,
-						netInfoData,
+						string(netInfoData),
 						instanceKey.CellId,
 						instanceKey.InstanceGuid,
 						expectedActualLRP.ProcessGuid,
