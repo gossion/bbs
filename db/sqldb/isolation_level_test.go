@@ -58,7 +58,7 @@ var _ = Describe("Isolation Level", func() {
 												where session_id = @@SPID`)
 				err := row.Scan(&isolationLevel)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(isolationLevel).To(Equal(expectedLevel))
+				Expect(isolationLevel).To(Equal(level))
 			} else {
 				expectedLevel := strings.Replace(level, " ", "-", -1)
 				row := dbSession.QueryRow("SHOW VARIABLES LIKE '%isolation%'")
