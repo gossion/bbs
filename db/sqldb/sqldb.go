@@ -123,8 +123,8 @@ func (db *SQLDB) convertSQLError(err error) *models.Error {
 			return db.convertMySQLError(err.(*mysql.MySQLError))
 		case *pq.Error:
 			return db.convertPostgresError(err.(*pq.Error))
-		case *mssql.Error:
-			return db.convertMsSQLError(err.(*mssql.Error))
+		case mssql.Error:
+			return db.convertMsSQLError(err.(mssql.Error))
 		}
 	}
 
@@ -161,7 +161,7 @@ func (db *SQLDB) convertPostgresError(err *pq.Error) *models.Error {
 	}
 }
 
-func (db *SQLDB) convertMsSQLError(err *mssql.Error) *models.Error {
+func (db *SQLDB) convertMsSQLError(err mssql.Error) *models.Error {
 	switch err.Number {
 	case 1205:
 		return models.ErrDeadlock
