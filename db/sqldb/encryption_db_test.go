@@ -236,7 +236,7 @@ var _ = Describe("Encryption", func() {
 					queryStr = test_helpers.ReplaceQuestionMarks(queryStr)
 				}
 				_, err := db.Exec(queryStr,
-					processGuid, "fake-domain", netInfo, 0, 10, "yo")
+					processGuid, "fake-domain", string(netInfo), 0, 10, "yo")
 				Expect(err).NotTo(HaveOccurred())
 
 				cryptor = makeCryptor("new", "old")

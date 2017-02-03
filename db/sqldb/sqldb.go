@@ -122,7 +122,8 @@ func (db *SQLDB) convertSQLError(err error) *models.Error {
 			return db.convertMySQLError(err.(*mysql.MySQLError))
 		case *pq.Error:
 			return db.convertPostgresError(err.(*pq.Error))
-        //TODO: mssql error code
+		case *mssql.Error:
+			return db.convertMsSQLError(err.(*mssql.Error))
 		}
 	}
 
@@ -154,6 +155,21 @@ func (db *SQLDB) convertPostgresError(err *pq.Error) *models.Error {
 		return models.ErrResourceExists
 	case "42P01":
 		return models.NewUnrecoverableError(err)
+	default:
+		return models.ErrUnknownError
+	}
+}
+
+func (db *SQLDB) convertMsSQLError(err *mssql.Error) *models.Error {
+	switch err.Number {
+	case 1205:
+		return models.ErrDeadlock
+	case 2627:
+		return models.ErrResourceExists
+	case 2706:
+		return models.NewUnrecoverableError(err)
+	case 8152:
+		return models.ErrBadRequest
 	default:
 		return models.ErrUnknownError
 	}
