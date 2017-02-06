@@ -515,11 +515,10 @@ func (db *SQLDB) createRunningActualLRP(logger lager.Logger, key *models.ActualL
 	return actualLRP, nil
 }
 
-
-func (db *SQLDB) scanToActualLRP(logger lager.Logger, row RowScanner) (*models.ActualLRP, interface{}, error) {
+func (db *SQLDB) scanToActualLRP(logger lager.Logger, row RowScanner) (*models.ActualLRP, bool, error) {
 	var netInfoData []byte
 	var actualLRP models.ActualLRP
-	var evacuating interface{}
+	var evacuating bool
 
 	err := row.Scan(
 		&actualLRP.ProcessGuid,
@@ -556,14 +555,14 @@ func (db *SQLDB) scanToActualLRP(logger lager.Logger, row RowScanner) (*models.A
 
 type actualToDelete struct {
 	*models.ActualLRP
-	evacuating interface{}
+	evacuating bool
 }
 
-func (db *SQLDB) fetchActualLRPForUpdate(logger lager.Logger, processGuid string, index int32, evacuating interface{}, tx *sql.Tx) (*models.ActualLRP, error) {
+func (db *SQLDB) fetchActualLRPForUpdate(logger lager.Logger, processGuid string, index int32, evacuating bool, tx *sql.Tx) (*models.ActualLRP, error) {
 	expireTime := db.clock.Now().Round(time.Second).UnixNano()
 	wheres := "process_guid = ? AND instance_index = ? AND evacuating = ?"
 	bindings := []interface{}{processGuid, index, evacuating}
-	if evacuating == true || evacuating == 1 {
+	if evacuating {
 		wheres += " AND expire_time > ?"
 		bindings = append(bindings, expireTime)
 	}
@@ -612,7 +611,7 @@ func (db *SQLDB) scanAndCleanupActualLRPs(logger lager.Logger, q Queryable, rows
 			mapOfGroups[actualLRP.ActualLRPKey] = &models.ActualLRPGroup{}
 			result = append(result, mapOfGroups[actualLRP.ActualLRPKey])
 		}
-		if evacuating == true || evacuating == 1 {
+		if evacuating {
 			mapOfGroups[actualLRP.ActualLRPKey].Evacuating = actualLRP
 		} else {
 			mapOfGroups[actualLRP.ActualLRPKey].Instance = actualLRP
