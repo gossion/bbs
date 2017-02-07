@@ -406,8 +406,8 @@ func (e *ETCDToSQL) migrateTasks(logger lager.Logger) error {
 							VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 						`, e.dbFlavor),
 				task.TaskGuid, task.Domain, task.UpdatedAt, task.CreatedAt,
-				task.FirstCompletedAt, task.State, task.CellId, task.Result,
-				task.Failed, task.FailureReason, definitionData)
+				task.FirstCompletedAt, task.State, task.CellId, sttask.Result,
+				task.Failed, task.FailureReason, string(definitionData))
 			if err != nil {
 				logger.Error("failed-inserting-task", err)
 				continue
