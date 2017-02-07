@@ -215,7 +215,7 @@ func (db *SQLDB) selectLRPInstanceCounts(logger lager.Logger, q Queryable) (*sql
 				(SELECT desired_lrps.process_guid,
 					desired_lrps.instances,
 					COUNT(actual_lrps.instance_index) AS actual_instances,
-					STUFF ((SELECT ',' + STR(al.instance_index)
+					STUFF ((SELECT ',' + CAST(al.instance_index AS VARCHAR)
 							FROM actual_lrps al
 							WHERE al.process_guid = desired_lrps.process_guid
 							FOR XML PATH('')
