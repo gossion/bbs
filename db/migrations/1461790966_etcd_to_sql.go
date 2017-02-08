@@ -317,7 +317,7 @@ func (e *ETCDToSQL) migrateDesiredLRPs(logger lager.Logger) error {
 				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 			`, e.dbFlavor), schedInfo.ProcessGuid, schedInfo.Domain, schedInfo.LogGuid, schedInfo.Annotation,
 				schedInfo.Instances, schedInfo.MemoryMb, schedInfo.DiskMb, schedInfo.RootFs, volumePlacementData,
-				routeData, schedInfo.ModificationTag.Epoch, schedInfo.ModificationTag.Index, []byte(node.Value))
+				string(routeData), schedInfo.ModificationTag.Epoch, schedInfo.ModificationTag.Index, string(node.Value))
 			if err != nil {
 				logger.Error("failed-inserting-desired-lrp", err)
 				continue
@@ -362,7 +362,7 @@ func (e *ETCDToSQL) migrateActualLRPs(logger lager.Logger) error {
 								modification_tag_epoch, modification_tag_index)
 							VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 						`, e.dbFlavor), actualLRP.ProcessGuid, actualLRP.Index, actualLRP.Domain, actualLRP.InstanceGuid,
-							actualLRP.CellId, netInfoData, actualLRP.CrashCount, actualLRP.CrashReason,
+							actualLRP.CellId, string(netInfoData), actualLRP.CrashCount, actualLRP.CrashReason,
 							actualLRP.State, actualLRP.PlacementError, actualLRP.Since,
 							actualLRP.ModificationTag.Epoch, actualLRP.ModificationTag.Index)
 						if err != nil {
