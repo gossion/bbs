@@ -316,7 +316,7 @@ func (e *ETCDToSQL) migrateDesiredLRPs(logger lager.Logger) error {
 					modification_tag_index, run_info)
 				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 			`, e.dbFlavor), schedInfo.ProcessGuid, schedInfo.Domain, schedInfo.LogGuid, schedInfo.Annotation,
-				schedInfo.Instances, schedInfo.MemoryMb, schedInfo.DiskMb, schedInfo.RootFs, volumePlacementData,
+				schedInfo.Instances, schedInfo.MemoryMb, schedInfo.DiskMb, schedInfo.RootFs, string(volumePlacementData),
 				string(routeData), schedInfo.ModificationTag.Epoch, schedInfo.ModificationTag.Index, string(node.Value))
 			if err != nil {
 				logger.Error("failed-inserting-desired-lrp", err)
