@@ -170,7 +170,9 @@ func RebindForFlavor(query, flavor string) string {
 		}
 		return strings.Replace(strings.Join(strParts, ""), "MEDIUMTEXT", "TEXT", -1)
 	case MSSQL:
-		return strings.Replace(query, "MEDIUMTEXT", "TEXT", -1)
+		query = strings.Replace(query, "MEDIUMTEXT", "NVARCHAR(MAX)", -1)
+		query = strings.Replace(query, "TEXT", "NVARCHAR(MAX)", -1)
+		return query
 	default:
 		panic("database flavor not implemented: " + flavor)
 	}
