@@ -247,7 +247,7 @@ func (db *SQLDB) selectOrphanedActualLRPs(logger lager.Logger, q Queryable) (*sq
       WHERE actual_lrps.evacuating = ? AND desired_lrps.process_guid IS NULL
 		`
 
-	return q.Query(db.rebind(query), db.getFalseValue())
+	return q.Query(db.rebind(query), false)
 }
 
 func (db *SQLDB) selectLRPsWithMissingCells(logger lager.Logger, q Queryable, cellSet models.CellSet) (*sql.Rows, error) {
@@ -288,7 +288,7 @@ func (db *SQLDB) selectCrashedLRPs(logger lager.Logger, q Queryable) (*sql.Rows,
 		),
 	)
 
-	return q.Query(db.rebind(query), models.ActualLRPStateCrashed, db.getFalseValue())
+	return q.Query(db.rebind(query), models.ActualLRPStateCrashed, false)
 }
 
 func (db *SQLDB) selectStaleUnclaimedLRPs(logger lager.Logger, q Queryable, now time.Time) (*sql.Rows, error) {
@@ -304,7 +304,7 @@ func (db *SQLDB) selectStaleUnclaimedLRPs(logger lager.Logger, q Queryable, now 
 	return q.Query(db.rebind(query),
 		models.ActualLRPStateUnclaimed,
 		now.Add(-models.StaleUnclaimedActualLRPDuration).UnixNano(),
-		db.getFalseValue(),
+		false,
 	)
 }
 
@@ -364,7 +364,7 @@ func (db *SQLDB) countActualLRPsByState(logger lager.Logger, q Queryable) (claim
 		panic("database flavor not implemented: " + db.flavor)
 	}
 
-	row := db.db.QueryRow(query, models.ActualLRPStateClaimed, models.ActualLRPStateUnclaimed, models.ActualLRPStateRunning, models.ActualLRPStateCrashed, models.ActualLRPStateCrashed, db.getFalseValue())
+	row := db.db.QueryRow(query, models.ActualLRPStateClaimed, models.ActualLRPStateUnclaimed, models.ActualLRPStateRunning, models.ActualLRPStateCrashed, models.ActualLRPStateCrashed, false)
 	err := row.Scan(&claimedCount, &unclaimedCount, &runningCount, &crashedCount, &crashingDesiredCount)
 	if err != nil {
 		logger.Error("failed-counting-actual-lrps", err)

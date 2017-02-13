@@ -70,7 +70,7 @@ func (db *SQLDB) EvacuateActualLRP(
 				"modification_tag_index": actualLRP.ModificationTag.Index,
 			},
 			"process_guid = ? AND instance_index = ? AND evacuating = ?",
-			actualLRP.ProcessGuid, actualLRP.Index, db.getTrueValue(),
+			actualLRP.ProcessGuid, actualLRP.Index, true,
 		)
 		if err != nil {
 			logger.Error("failed-update-evacuating-lrp", err)
@@ -110,7 +110,7 @@ func (db *SQLDB) RemoveEvacuatingActualLRP(logger lager.Logger, lrpKey *models.A
 
 		_, err = db.delete(logger, tx, "actual_lrps",
 			"process_guid = ? AND instance_index = ? AND evacuating = ?",
-			processGuid, index, db.getTrueValue(),
+			processGuid, index, true,
 		)
 		if err != nil {
 			logger.Error("failed-delete", err)

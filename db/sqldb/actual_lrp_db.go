@@ -159,7 +159,7 @@ func (db *SQLDB) UnclaimActualLRP(logger lager.Logger, key *models.ActualLRPKey)
 				"net_info":               "",
 			},
 			"process_guid = ? AND instance_index = ? AND evacuating = ?",
-			processGuid, index, db.getFalseValue(),
+			processGuid, index, false,
 		)
 		if err != nil {
 			logger.Error("failed-to-unclaim-actual-lrp", err)
@@ -215,7 +215,7 @@ func (db *SQLDB) ClaimActualLRP(logger lager.Logger, processGuid string, index i
 				"net_info":               "",
 			},
 			"process_guid = ? AND instance_index = ? AND evacuating = ?",
-			processGuid, index, db.getFalseValue(),
+			processGuid, index, false,
 		)
 		if err != nil {
 			logger.Error("failed-claiming-actual-lrp", err)
@@ -266,7 +266,7 @@ func (db *SQLDB) StartActualLRP(logger lager.Logger, key *models.ActualLRPKey, i
 		defer logger.Info("completed")
 
 		now := db.clock.Now().UnixNano()
-		evacuating := db.getFalseValue()
+		evacuating := false
 
 		actualLRP.ActualLRPInstanceKey = *instanceKey
 		actualLRP.ActualLRPNetInfo = *netInfo
@@ -353,7 +353,7 @@ func (db *SQLDB) CrashActualLRP(logger lager.Logger, key *models.ActualLRPKey, i
 		actualLRP.ActualLRPNetInfo = models.ActualLRPNetInfo{}
 		actualLRP.CrashCount = newCrashCount
 		actualLRP.CrashReason = crashReason
-		evacuating := db.getFalseValue()
+		evacuating := false
 
 		if actualLRP.ShouldRestartImmediately(models.NewDefaultRestartCalculator()) {
 			actualLRP.State = models.ActualLRPStateUnclaimed
@@ -414,7 +414,7 @@ func (db *SQLDB) FailActualLRP(logger lager.Logger, key *models.ActualLRPKey, pl
 		actualLRP.ModificationTag.Increment()
 		actualLRP.PlacementError = placementError
 		actualLRP.Since = now
-		evacuating := db.getFalseValue()
+		evacuating := false
 
 		_, err = db.update(logger, tx, actualLRPsTable,
 			SQLAttributes{
@@ -447,12 +447,12 @@ func (db *SQLDB) RemoveActualLRP(logger lager.Logger, processGuid string, index 
 		if instanceKey == nil {
 			result, err = db.delete(logger, tx, actualLRPsTable,
 				"process_guid = ? AND instance_index = ? AND evacuating = ?",
-				processGuid, index, db.getFalseValue(),
+				processGuid, index, false,
 			)
 		} else {
 			result, err = db.delete(logger, tx, actualLRPsTable,
 				"process_guid = ? AND instance_index = ? AND evacuating = ? AND instance_guid = ? AND cell_id = ?",
-				processGuid, index, db.getFalseValue(), instanceKey.InstanceGuid, instanceKey.CellId,
+				processGuid, index, false, instanceKey.InstanceGuid, instanceKey.CellId,
 			)
 		}
 		if err != nil {
