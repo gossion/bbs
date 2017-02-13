@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	_ "github.com/denisenkom/go-mssqldb"
+	"github.com/denisenkom/go-mssqldb"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
