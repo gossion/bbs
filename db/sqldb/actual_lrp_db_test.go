@@ -121,11 +121,11 @@ var _ = Describe("ActualLRPDB", func() {
 
 		Context("when there are both instance and evacuating LRPs", func() {
 			BeforeEach(func() {
-				queryStr := fmt.Sprintf("UPDATE actual_lrps SET evacuating = %v WHERE process_guid = ?", true)
+				queryStr := fmt.Sprintf("UPDATE actual_lrps SET evacuating = ? WHERE process_guid = ?")
 				if test_helpers.UsePostgres() {
 					queryStr = test_helpers.ReplaceQuestionMarks(queryStr)
 				}
-				_, err := db.Exec(queryStr, actualLRP.ProcessGuid)
+				_, err := db.Exec(queryStr, true, actualLRP.ProcessGuid)
 				Expect(err).NotTo(HaveOccurred())
 				_, err = sqlDB.CreateUnclaimedActualLRP(logger, &actualLRP.ActualLRPKey)
 				Expect(err).NotTo(HaveOccurred())

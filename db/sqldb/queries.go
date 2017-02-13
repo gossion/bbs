@@ -251,8 +251,9 @@ func (db *SQLDB) selectOrphanedActualLRPs(logger lager.Logger, q Queryable) (*sq
 }
 
 func (db *SQLDB) selectLRPsWithMissingCells(logger lager.Logger, q Queryable, cellSet models.CellSet) (*sql.Rows, error) {
-	wheres := []string{fmt.Sprintf(`actual_lrps.evacuating = %v`, db.getFalseValue())}
 	bindings := make([]interface{}, 0, len(cellSet))
+	wheres := []string{"actual_lrps.evacuating = ?"}
+	bindings = append(bindings, false)
 
 	if len(cellSet) > 0 {
 		wheres = append(wheres, fmt.Sprintf("actual_lrps.cell_id NOT IN (%s)", questionMarks(len(cellSet))))

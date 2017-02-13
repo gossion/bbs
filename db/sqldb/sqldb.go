@@ -175,19 +175,3 @@ func (db *SQLDB) convertMsSQLError(err mssql.Error) *models.Error {
 		return models.ErrUnknownError
 	}
 }
-
-func (db *SQLDB) getTrueValue() interface{} {
-	if db.flavor == MSSQL {
-		return 1
-	} else {
-		return true
-	}
-}
-
-func (db *SQLDB) getFalseValue() interface{} {
-	if db.flavor == MSSQL {
-		return 0
-	} else {
-		return false
-	}
-}
