@@ -86,7 +86,7 @@ func (e *EncryptRoutes) Up(logger lager.Logger) error {
 
 		bindings := make([]interface{}, 0, 3)
 		updateQuery := fmt.Sprintf("UPDATE desired_lrps SET routes = ? WHERE process_guid = ?")
-		bindings = append(bindings, string(encodedData))
+		bindings = append(bindings, encodedData)
 		bindings = append(bindings, processGuid)
 		_, err = e.rawSQLDB.Exec(sqldb.RebindForFlavor(updateQuery, e.dbFlavor), bindings...)
 		if err != nil {
