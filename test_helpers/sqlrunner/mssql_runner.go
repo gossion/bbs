@@ -79,7 +79,7 @@ func (m *MsSQLRunner) Reset() {
 	for _, query := range truncateTablesSQL {
 		result, err := m.db.Exec(query)
 		switch err := err.(type) {
-		case case mssql.Error:
+		case mssql.Error:
 			if err.Number == 4701 {
 				// missing table error, it's fine because we're trying to truncate it
 				continue
