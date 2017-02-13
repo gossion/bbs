@@ -49,8 +49,7 @@ func (m *MsSQLRunner) Run(signals <-chan os.Signal, ready chan<- struct{}) error
 
 	<-signals
 
-	_, err = m.db.Exec(fmt.Sprintf("DROP DATABASE %s", m.sqlDBName))
-	Expect(m.db.Close()).To(Succeed())
+	m.db.Exec(fmt.Sprintf("DROP DATABASE %s", m.sqlDBName))
 	m.db = nil
 
 	return nil
