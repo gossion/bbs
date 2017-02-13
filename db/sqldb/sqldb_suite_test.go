@@ -61,7 +61,7 @@ var _ = BeforeSuite(func() {
 		dbFlavor = sqldb.MySQL
 	} else if test_helpers.UseMsSQL() {
 		dbDriverName = "mssql"
-		dbBaseConnectionString = os.Getenv("MSSQL_CONNECTION_STRING")
+		dbBaseConnectionString = os.Getenv("MSSQL_BASE_CONNECTION_STRING")
 		dbFlavor = sqldb.MSSQL
 	} else {
 		panic("Unsupported driver")
@@ -81,7 +81,13 @@ var _ = BeforeSuite(func() {
 		db, err = sql.Open(dbDriverName, fmt.Sprintf("%sdiego_%d", dbBaseConnectionString, GinkgoParallelNode()))
 		Expect(err).NotTo(HaveOccurred())
 		Expect(db.Ping()).NotTo(HaveOccurred())
+	} else if dbFlavor == sqldb.MSSQL {
+		_, err = db.Exec(fmt.Sprintf("CREATE DATABASE diego_%d", GinkgoParallelNode()))
+		db, err = sql.Open(dbDriverName, fmt.Sprintf("%s;database=diego_%d", dbBaseConnectionString, GinkgoParallelNode()))
+		Expect(err).NotTo(HaveOccurred())
+		Expect(db.Ping()).NotTo(HaveOccurred())
 	}
+
 
 	encryptionKey, err := encryption.NewKey("label", "passphrase")
 	Expect(err).NotTo(HaveOccurred())
@@ -136,7 +142,10 @@ var _ = AfterSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(db.Ping()).NotTo(HaveOccurred())
 	_, err = db.Exec(fmt.Sprintf("DROP DATABASE diego_%d", GinkgoParallelNode()))
-	Expect(err).NotTo(HaveOccurred())
+	// On Azure, it will return a "i/o timeout" error.
+	if dbFlavor != sqldb.MSSQL {
+		Expect(err).NotTo(HaveOccurred())
+	}
 	Expect(db.Close()).NotTo(HaveOccurred())
 })
 

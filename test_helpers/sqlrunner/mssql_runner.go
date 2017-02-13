@@ -13,8 +13,8 @@ import (
 // MsSQLRunner is responsible for creating and tearing down a test database in
 // a Microsoft SQL instance. This runner assumes mssql is already running
 // on Azure.
-// To run the test, you need to specific MSSQL_CONNECTION_STRING in env.
-// example: SQL_FLAVOR="mssql" MSSQL_CONNECTION_STRING="server=<server>.database.windows.net;user id=<username>;password=<password>;database=diego;port=1433"
+// To run the test, you need to specific MSSQL_BASE_CONNECTION_STRING in env.
+// example: SQL_FLAVOR="mssql" MSSQL_BASE_CONNECTION_STRING="server=<server>.database.windows.net;user id=<username>;password=<password>;database=diego;port=1433"
 type MsSQLRunner struct {
 	sqlDBName string
 	db        *sql.DB
@@ -29,9 +29,9 @@ func NewMsSQLRunner(sqlDBName string) *MsSQLRunner {
 func (m *MsSQLRunner) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 	defer GinkgoRecover()
 
-	db_connection_string := os.Getenv("MSSQL_CONNECTION_STRING")
+	db_connection_string := os.Getenv("MSSQL_BASE_CONNECTION_STRING")
 	if db_connection_string == "" {
-		panic(fmt.Sprintf("You must specify MSSQL_CONNECTION_STRING when running test for mssql"))
+		panic(fmt.Sprintf("You must specify MSSQL_BASE_CONNECTION_STRING when running test for mssql"))
 	}
 
 	var err error
@@ -39,20 +39,17 @@ func (m *MsSQLRunner) Run(signals <-chan os.Signal, ready chan<- struct{}) error
 	Expect(err).NotTo(HaveOccurred())
 	Expect(m.db.Ping()).NotTo(HaveOccurred())
 
-	//m.db.Exec(fmt.Sprintf("DROP DATABASE %s", m.sqlDBName))
-	//_, err = m.db.Exec(fmt.Sprintf("CREATE DATABASE %s", m.sqlDBName))
-	//Expect(err).NotTo(HaveOccurred())
+	_, err = m.db.Exec(fmt.Sprintf("CREATE DATABASE %s", m.sqlDBName))
 
-	//m.db, err = sql.Open("mssql", fmt.Sprintf("diego:diego_password@/%s", m.sqlDBName))
-	//Expect(err).NotTo(HaveOccurred())
-	//Expect(m.db.Ping()).NotTo(HaveOccurred())
+	m.db, err = sql.Open("mssql", fmt.Sprintf("%s;database=%s", db_connection_string, m.sqlDBName))
+	Expect(err).NotTo(HaveOccurred())
+	Expect(m.db.Ping()).NotTo(HaveOccurred())
 
 	close(ready)
 
 	<-signals
 
 	_, err = m.db.Exec(fmt.Sprintf("DROP DATABASE %s", m.sqlDBName))
-	Expect(err).NotTo(HaveOccurred())
 	Expect(m.db.Close()).To(Succeed())
 	m.db = nil
 
@@ -60,7 +57,7 @@ func (m *MsSQLRunner) Run(signals <-chan os.Signal, ready chan<- struct{}) error
 }
 
 func (m *MsSQLRunner) ConnectionString() string {
-	return os.Getenv("MSSQL_CONNECTION_STRING")
+	return fmt.Sprintf("%s;database=%s", os.Getenv("MSSQL_BASE_CONNECTION_STRING"), m.sqlDBName)
 }
 
 func (m *MsSQLRunner) DriverName() string {
@@ -81,14 +78,13 @@ func (m *MsSQLRunner) Reset() {
 	}
 	for _, query := range truncateTablesSQL {
 		result, err := m.db.Exec(query)
-		//switch err := err.(type) {
-		//TODO
-		//case *mysql.MySQLError:
-		//	if err.Number == 1146 {
+		switch err := err.(type) {
+		case case mssql.Error:
+			if err.Number == 4701 {
 				// missing table error, it's fine because we're trying to truncate it
-		//		continue
-		//	}
-		//}
+				continue
+			}
+		}
 
 		Expect(err).NotTo(HaveOccurred())
 		Expect(result.RowsAffected()).To(BeEquivalentTo(0))
