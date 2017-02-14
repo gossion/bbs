@@ -83,6 +83,7 @@ var _ = BeforeSuite(func() {
 		Expect(db.Ping()).NotTo(HaveOccurred())
 	} else if dbFlavor == sqldb.MSSQL {
 		_, err = db.Exec(fmt.Sprintf("CREATE DATABASE diego_%d", GinkgoParallelNode()))
+		time.Sleep(5*time.Second)
 		db, err = sql.Open(dbDriverName, fmt.Sprintf("%s;database=diego_%d", dbBaseConnectionString, GinkgoParallelNode()))
 		Expect(err).NotTo(HaveOccurred())
 		Expect(db.Ping()).NotTo(HaveOccurred())

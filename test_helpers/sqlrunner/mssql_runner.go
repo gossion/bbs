@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/denisenkom/go-mssqldb"
 	. "github.com/onsi/ginkgo"
@@ -40,6 +41,8 @@ func (m *MsSQLRunner) Run(signals <-chan os.Signal, ready chan<- struct{}) error
 	Expect(m.db.Ping()).NotTo(HaveOccurred())
 
 	_, err = m.db.Exec(fmt.Sprintf("CREATE DATABASE %s", m.sqlDBName))
+	// wait for the database to be available
+	time.Sleep(5*time.Second)
 
 	m.db, err = sql.Open("mssql", fmt.Sprintf("%s;database=%s", db_connection_string, m.sqlDBName))
 	Expect(err).NotTo(HaveOccurred())
