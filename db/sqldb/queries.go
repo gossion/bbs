@@ -171,7 +171,10 @@ func RebindForFlavor(query, flavor string) string {
 	case MSSQL:
 		query = strings.Replace(query, "MEDIUMTEXT", "NVARCHAR(MAX)", -1)
 		query = strings.Replace(query, "TEXT", "NVARCHAR(MAX)", -1)
-		query = strings.Replace(query, "BOOL", "BIT", -1)
+		query = strings.Replace(query, "BOOL DEFAULT false", "TINYINT DEFAULT 0", -1)
+		query = strings.Replace(query, "BOOL DEFAULT true", "TINYINT DEFAULT 1", -1)
+		query = strings.Replace(query, "BOOL", "TINYINT", -1)
+		query = strings.Replace(query, "ADD COLUMN", "ADD", -1)
 		return query
 	default:
 		panic("database flavor not implemented: " + flavor)

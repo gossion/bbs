@@ -54,26 +54,19 @@ func (e *AddMaxPidsToDesiredLRPs) SetClock(c clock.Clock)    { e.clock = c }
 func (e *AddMaxPidsToDesiredLRPs) SetDBFlavor(flavor string) { e.dbFlavor = flavor }
 
 func (e *AddMaxPidsToDesiredLRPs) Up(logger lager.Logger) error {
-	query := alterDesiredLRPAddMaxPidsSQL
-	if e.dbFlavor == sqldb.MSSQL {
-		query = alterDesiredLRPAddMaxPidsTSQL
-	}
-	logger.Info("altering the table", lager.Data{"query": query})
-	_, err := e.rawSQLDB.Exec(query)
+	logger.Info("altering the table", lager.Data{"query": sqldb.RebindForFlavor(alterDesiredLRPAddMaxPidsSQL, e.dbFlavor)})
+	_, err := e.rawSQLDB.Exec(alterDesiredLRPAddMaxPidsSQL)
 	if err != nil {
 		logger.Error("failed-altering-tables", err)
 		return err
 	}
-	logger.Info("altered the table", lager.Data{"query": query})
+	logger.Info("altered the table", lager.Data{"query": sqldb.RebindForFlavor(alterDesiredLRPAddMaxPidsSQL, e.dbFlavor)})
 
 	return nil
 }
 
 const alterDesiredLRPAddMaxPidsSQL = `ALTER TABLE desired_lrps
 	ADD COLUMN max_pids INTEGER DEFAULT 0;`
-
-const alterDesiredLRPAddMaxPidsTSQL = `ALTER TABLE desired_lrps
-	ADD max_pids INTEGER DEFAULT 0;`
 
 func (e *AddMaxPidsToDesiredLRPs) Down(logger lager.Logger) error {
 	return errors.New("not implemented")
