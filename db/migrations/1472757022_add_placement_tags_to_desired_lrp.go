@@ -54,7 +54,7 @@ func (e *AddPlacementTagsToDesiredLRPs) SetClock(c clock.Clock)    { e.clock = c
 func (e *AddPlacementTagsToDesiredLRPs) SetDBFlavor(flavor string) { e.dbFlavor = flavor }
 
 func (e *AddPlacementTagsToDesiredLRPs) Up(logger lager.Logger) error {
-	query := helpers.RebindForFlavor(alterDesiredLRPAddPlacementTagSQL)
+	query := helpers.RebindForFlavor(alterDesiredLRPAddPlacementTagSQL, e.dbFlavor)
 	logger.Info("altering the table", lager.Data{"query": query})
 	_, err := e.rawSQLDB.Exec(query)
 	if err != nil {
