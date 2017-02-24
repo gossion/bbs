@@ -14,6 +14,7 @@ import (
 // MSSQLRunner is responsible for creating and tearing down a test database in
 // a Microsoft SQL instance. This runner assumes mssql is already running
 // on localhost or Azure and has firewall set properly.
+// You can follow this guide https://docs.microsoft.com/en-us/azure/sql-database/sql-database-configure-firewall-settings to create firewall on Azure.
 // To run the test, you need to specific MSSQL_BASE_CONNECTION_STRING in env.
 // example: SQL_FLAVOR="mssql" MSSQL_BASE_CONNECTION_STRING="server=<server>.database.windows.net;user id=<username>;password=<password>;port=1433"
 // Be noted that you should not set a database in MSSQL_BASE_CONNECTION_STRING, the test will create one for you.

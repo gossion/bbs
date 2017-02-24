@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"time"
+	"net"
 
 	thepackagedb "code.cloudfoundry.org/bbs/db"
 	"code.cloudfoundry.org/bbs/db/migrations"
@@ -70,7 +71,7 @@ var _ = BeforeSuite(func() {
 
 	// mysql must be set up on localhost as described in the CONTRIBUTING.md doc
 	// in diego-release.
-	// mssql should be set up on Azure
+	// mssql should be set up on Azure or localhost
 	db, err = sql.Open(dbDriverName, dbBaseConnectionString)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(db.Ping()).NotTo(HaveOccurred())
@@ -151,8 +152,15 @@ var _ = AfterSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(db.Ping()).NotTo(HaveOccurred())
 	_, err = db.Exec(fmt.Sprintf("DROP DATABASE diego_%d", GinkgoParallelNode()))
-	// On Azure, it will return a "i/o timeout" error when the database is dropped.
-	if dbFlavor != helpers.MSSQL {
+	if dbFlavor == helpers.MSSQL {
+		switch err.(type) {
+		case *net.OpError:
+			// On Azure, it may return a "i/o timeout" error when the database is dropped.
+			// do nothing here
+		default:
+			Expect(err).NotTo(HaveOccurred())
+		}
+	} else {
 		Expect(err).NotTo(HaveOccurred())
 	}
 	Expect(db.Close()).NotTo(HaveOccurred())
