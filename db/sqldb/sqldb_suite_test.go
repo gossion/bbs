@@ -17,6 +17,7 @@ import (
 	"code.cloudfoundry.org/bbs/guidprovider/guidproviderfakes"
 	"code.cloudfoundry.org/bbs/migration"
 	"code.cloudfoundry.org/bbs/test_helpers"
+	"code.cloudfoundry.org/bbs/test_helpers/tool_helpers"
 	"code.cloudfoundry.org/clock/fakeclock"
 	"code.cloudfoundry.org/lager/lagertest"
 	. "github.com/onsi/ginkgo"
@@ -80,11 +81,14 @@ var _ = BeforeSuite(func() {
 	db.Exec(fmt.Sprintf("DROP DATABASE diego_%d", GinkgoParallelNode()))
 	if dbFlavor == helpers.MSSQL {
 		_, err = db.Exec(fmt.Sprintf("CREATE DATABASE diego_%d", GinkgoParallelNode()))
-		time.Sleep(5*time.Second)
 
-		db, err = sql.Open(dbDriverName, fmt.Sprintf("%s;database=diego_%d", dbBaseConnectionString, GinkgoParallelNode()))
+		err = tool_helpers.Retry(5, func() error {
+			var err error
+			db, err = sql.Open(dbDriverName, fmt.Sprintf("%s;database=diego_%d", dbBaseConnectionString, GinkgoParallelNode()))
+			err = db.Ping()
+			return err
+		})
 		Expect(err).NotTo(HaveOccurred())
-		Expect(db.Ping()).NotTo(HaveOccurred())
 	} else {
 		_, err = db.Exec(fmt.Sprintf("CREATE DATABASE diego_%d", GinkgoParallelNode()))
 		Expect(err).NotTo(HaveOccurred())

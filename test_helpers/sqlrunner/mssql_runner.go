@@ -4,8 +4,8 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
-	"time"
 
+	"code.cloudfoundry.org/bbs/test_helpers/tool_helpers"
 	"github.com/denisenkom/go-mssqldb"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -43,12 +43,14 @@ func (m *MSSQLRunner) Run(signals <-chan os.Signal, ready chan<- struct{}) error
 	Expect(m.db.Ping()).NotTo(HaveOccurred())
 
 	_, err = m.db.Exec(fmt.Sprintf("CREATE DATABASE %s", m.sqlDBName))
-	// wait for the database to be available
-	time.Sleep(5*time.Second)
 
-	m.db, err = sql.Open("mssql", m.ConnectionString())
+	err = tool_helpers.Retry(5, func() error {
+		var err error
+		m.db, err = sql.Open("mssql", m.ConnectionString())
+		err = m.db.Ping()
+		return err
+	})
 	Expect(err).NotTo(HaveOccurred())
-	Expect(m.db.Ping()).NotTo(HaveOccurred())
 
 	close(ready)
 
